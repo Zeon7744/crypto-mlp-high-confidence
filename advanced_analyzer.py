@@ -585,26 +585,3 @@ if __name__ == '__main__':
     print(f"特征数: {result['training_stats']['n_features']}")
     
     print("\n" + "="*60)
-
-# === 调试模式 ===
-if __name__ == '__main__':
-    import logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
-    analyzer = CryptoAdvancedAnalyzer(coin='BTC', timeframe='4h')
-    result = analyzer.analyze(account_balance=10000)
-    
-    # 调试输出
-    print("\n=== 置信度计算调试 ===")
-    vote = result['prediction']['vote_distribution']
-    vote_consistency = vote.get('weighted_consistency', max(vote['up'], vote['down']) / vote['total'])
-    prob_confidence = result['prediction']['probability_down'] if result['prediction']['prediction'] == 'down' else result['prediction']['probability_up']
-    raw = 0.8 * vote_consistency + 0.2 * prob_confidence
-    cv = result['training_stats']['avg_accuracy']
-    calibrated = raw * cv + (1 - raw) * 0.5
-    print(f"投票一致性(加权): {vote_consistency:.4f}")
-    print(f"概率置信度: {prob_confidence:.4f}")
-    print(f"原始置信度: {raw:.4f}")
-    print(f"CV准确率: {cv:.4f}")
-    print(f"校准后置信度: {calibrated:.4f}")
-    print(f"最终置信度: {result['prediction']['confidence']:.4f}")
