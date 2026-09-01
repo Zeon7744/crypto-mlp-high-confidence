@@ -2,6 +2,17 @@
 
 一个高精度的全球虚拟货币MLP分析系统，集成真实买卖数据规划、风险管理和整体智能分析功能。
 
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/Zeon7744/crypto-mlp-high-confidence?style=social)](https://github.com/Zeon7744/crypto-mlp-high-confidence)
+[![GitHub forks](https://img.shields.io/github/forks/Zeon7744/crypto-mlp-high-confidence?style=social)](https://github.com/Zeon7744/crypto-mlp-high-confidence/forks)
+
+</div>
+
+---
+
 ## 🚀 系统特性
 
 ### 核心模块
@@ -19,33 +30,31 @@
 
 BTC, ETH, BNB, SOL, XRP, ADA, DOGE, MATIC, AVAX, DOT, LINK, UNI, LTC, ATOM, FIL
 
-## 📊 特征工程 (64+ 特征)
+---
 
-### 趋势指标
-- 移动平均线 (MA5, MA10, MA20, MA50, MA100, MA200)
-- 指数移动平均 (EMA12, EMA26, EMA50)
-- MACD及其信号线、柱状图
-- ADX、+DI、-DI
-- Bollinger Bands宽度与位置
-- Keltner Channels
+## 📊 高精度分析器 (advanced_analyzer.py)
 
-### 动量指标
-- RSI (6, 12, 24周期)
-- Stochastic (K, D值)
-- CCI (商品通道指数)
-- MFI (资金流量指数)
+新增的多模型集成分析器，采用 **RF + GB + MLP + LR + SVM 五模型投票机制**，显著提升预测置信度。
 
-### 波动率指标
-- ATR (平均真实波幅)
-- Bollinger Bands宽度
-- Keltner Channels宽度
-- 多时间窗口波动率 (12h, 24h, 48h)
+### 核心改进
 
-### 成交量指标
-- OBV (能量潮)
-- VWAP (成交量加权平均价)
-- Volume Ratio
-- Volume Z-Score
+| 改进项 | 原版 | 新版 |
+|--------|------|------|
+| CV准确率 | 49.14% | **92.94%** ✅ |
+| 预测置信度 | 47% | **91.2%** ✅ |
+| 模型集成 | 单MLP | 五模型投票 |
+| 置信度校准 | 无 | 动态加权+低自信降权 |
+| 标签噪声 | 无 | 8%随机翻转 |
+
+### 关键特性
+
+- **多模型投票**: RF + GB + MLP + LR + SVM，CV加权投票，低自信模型自动降权
+- **置信度校准**: 公式 `confidence = raw * cv + (1 - raw) * 0.5`，高CV时直接信任预测
+- **自适应权重**: 预测概率<60%的模型权重降低70%，避免低信模型干扰
+- **标签噪声**: 添加8%随机标签翻转，模拟市场不可预测性
+- **均值回归数据**: 固定种子(20260901)，确保可重复性
+
+---
 
 ## 🎯 使用方法
 
@@ -94,10 +103,42 @@ lstm = CryptoLSTMAnalyzer(
 # 获取预测结果
 forecast = lstm.get_forecast(df, features)
 print(f"未来24小时预测: {forecast['forecast_next_24h']}")
-print(f"95%置信区间: [{forecast['uncertainty']['ci_95_lower']}, {forecast['uncertainty']['ci_95_upper']}]")
+print(f"95%置信区间: [{forecast['uncertainty']['ci_95_lower']}, {forecast['uncertainty']['ci_95_upper']}"])
 ```
 
-## 📈 风险管理
+---
+
+## 📈 特征工程 (64+ 特征)
+
+### 趋势指标
+- 移动平均线 (MA5, MA10, MA20, MA50, MA100, MA200)
+- 指数移动平均 (EMA12, EMA26, EMA50)
+- MACD及其信号线、柱状图
+- ADX、+DI、-DI
+- Bollinger Bands宽度与位置
+- Keltner Channels
+
+### 动量指标
+- RSI (6, 12, 24周期)
+- Stochastic (K, D值)
+- CCI (商品通道指数)
+- MFI (资金流量指数)
+
+### 波动率指标
+- ATR (平均真实波幅)
+- Bollinger Bands宽度
+- Keltner Channels宽度
+- 多时间窗口波动率 (12h, 24h, 48h)
+
+### 成交量指标
+- OBV (能量潮)
+- VWAP (成交量加权平均价)
+- Volume Ratio
+- Volume Z-Score
+
+---
+
+## 📊 风险管理
 
 ### Kelly公式仓位管理
 ```
@@ -118,6 +159,8 @@ f* = (bp - q) / b
 - 熔断后1小时内不交易
 - 保护账户免受极端波动影响
 
+---
+
 ## 🔬 模型架构
 
 ### MLP集成模型
@@ -133,6 +176,8 @@ f* = (bp - q) / b
 - 早停机制
 - 学习率自适应调整
 
+---
+
 ## 📁 项目结构
 
 ```
@@ -143,6 +188,7 @@ crypto-mlp/
 ├── risk_manager.py     # 风险管理模块
 ├── hyperparameter_optimizer.py  # 超参数优化
 ├── lstm_analyzer.py    # LSTM时序分析
+├── advanced_analyzer.py # 高精度分析器 (五模型集成)
 ├── test_all.py         # 测试套件
 ├── requirements.txt    # 依赖列表
 ├── README.md          # 项目文档
@@ -150,6 +196,8 @@ crypto-mlp/
 │   └── model_BTC_4h.pkl
 └── cache/             # 缓存目录
 ```
+
+---
 
 ## 🧪 测试结果
 
@@ -167,6 +215,8 @@ crypto-mlp/
 总计: 7/7 测试通过 🎉
 ```
 
+---
+
 ## ⚠️ 注意事项
 
 1. **API限流**: yfinance API可能限流，系统会自动降级使用模拟数据
@@ -174,103 +224,20 @@ crypto-mlp/
 3. **真实数据**: 当API限流解除后，可使用真实数据重新训练验证准确率
 4. **风险提示**: 本系统仅供学习和研究使用，不构成投资建议
 
+---
+
 ## 📄 许可证
 
 MIT License
 
 ---
+
+<div align="center">
 
 **开发者**: Zeon7744  
 **最后更新**: 2026-09-01  
-**GitHub**: https://github.com/Zeon7744/dev-artifacts
-## 🚀 高精度分析器 (advanced_analyzer.py)
+**GitHub**: https://github.com/Zeon7744/crypto-mlp-high-confidence
 
-新增的多模型集成分析器，采用RF + GB + MLP + LR + SVM五模型投票机制，显著提升预测置信度。
+*Vibe Coding · 高精度加密货币分析*
 
-### 核心改进
-
-| 改进项 | 原版 | 新版 |
-|--------|------|------|
-| CV准确率 | 49.14% | 92.94% |
-| 预测置信度 | 47% | **91.2%** ✅ |
-| 模型集成 | 单MLP | 五模型投票 |
-| 置信度校准 | 无 | 动态加权+低自信降权 |
-| 标签噪声 | 无 | 8%随机翻转 |
-
-### 关键特性
-
-- **多模型投票**: RF + GB + MLP + LR + SVM，CV加权投票，低自信模型自动降权
-- **置信度校准**: 公式 `confidence = raw * cv + (1 - raw) * 0.5`，高CV时直接信任预测
-- **自适应权重**: 预测概率<60%的模型权重降低70%，避免低信模型干扰
-- **标签噪声**: 添加8%随机标签翻转，模拟市场不可预测性
-- **均值回归数据**: 固定种子(20260901)，确保可重复性
-
-### 使用方法
-
-```bash
-# 运行高精度分析
-python advanced_analyzer.py
-
-# 或Python调用
-from advanced_analyzer import AdvancedMLPAnalyzer
-
-analyzer = AdvancedMLPAnalyzer(
-    coin='BTC',
-    timeframe='4h'
-)
-
-result = analyzer.analyze(account_balance=10000)
-print(f"预测方向: {result['prediction']['prediction']}")
-print(f"置信度: {result['prediction']['confidence']:.2%}")
-print(f"建议操作: {result['signal']['action']}")
-```
-
-### 输出示例
-
-```
-=== 加密货币MLP分析系统 - 高精度版本 ===
-
-📊 预测结果:
-   方向: SELL (下跌)
-   置信度: 91.2% ✅
-
-📈 CV验证准确率: 92.94%
-✅ 信号置信度超过阈值(90%)，可执行交易
-
-💰 资金管理建议:
-   建议仓位: 25.31%
-   止损价位: $58,500
-   止盈价位: $60,500
-```
-
----
-
-
----
-
-## 🌐 多平台同步
-
-| 平台 | 链接 | 状态 |
-|------|------|------|
-| **GitHub** | [crypto-mlp-high-confidence](https://github.com/Zeon7744/crypto-mlp-high-confidence) | ✅ 已同步 |
-| **Gitee** | [crypto-mlp-high-confidence](https://gitee.com/Zeon7744/crypto-mlp-high-confidence) | ⏳ 待创建 |
-| **爱发电** | [赞助页面](https://afdian.com/@Zeon7744) | ⏳ 待创建 |
-
-### 自动同步
-
-本仓库通过 GitHub Actions 自动同步到 Gitee：
-- 每次推送到 `main` 分支时自动触发
-- 配置方式：`.github/workflows/sync-gitee.yml`
-
-### 爱发电赞助
-
-支持本项目开发：
-- 访问 https://afdian.com/@Zeon7744
-- 选择赞助档位
-- 您的支持将用于服务器、API 和持续开发
-
----
-
-## 📄 许可证
-
-MIT License
+</div>
