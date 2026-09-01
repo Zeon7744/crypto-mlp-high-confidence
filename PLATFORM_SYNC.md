@@ -142,3 +142,11 @@ echo "✅ 同步完成"
 - `platforms/three_platform_sync.md` - 详细同步指南
 - `platforms/final_status.md` - 最终状态总结
 - `sync_platforms.sh` - 同步脚本模板
+
+---
+
+## 分支说明
+
+- **GitHub 默认分支**: `main`
+- **本地默认分支**: `master`
+- **推送命令**: `git push github master:main`
