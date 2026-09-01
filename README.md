@@ -245,3 +245,32 @@ print(f"建议操作: {result['signal']['action']}")
 
 ---
 
+
+---
+
+## 🌐 多平台同步
+
+| 平台 | 链接 | 状态 |
+|------|------|------|
+| **GitHub** | [crypto-mlp-high-confidence](https://github.com/Zeon7744/crypto-mlp-high-confidence) | ✅ 已同步 |
+| **Gitee** | [crypto-mlp-high-confidence](https://gitee.com/Zeon7744/crypto-mlp-high-confidence) | ⏳ 待创建 |
+| **爱发电** | [赞助页面](https://afdian.com/@Zeon7744) | ⏳ 待创建 |
+
+### 自动同步
+
+本仓库通过 GitHub Actions 自动同步到 Gitee：
+- 每次推送到 `main` 分支时自动触发
+- 配置方式：`.github/workflows/sync-gitee.yml`
+
+### 爱发电赞助
+
+支持本项目开发：
+- 访问 https://afdian.com/@Zeon7744
+- 选择赞助档位
+- 您的支持将用于服务器、API 和持续开发
+
+---
+
+## 📄 许可证
+
+MIT License
