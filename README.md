@@ -226,6 +226,18 @@ crypto-mlp/
 
 ---
 
+## 💖 支持本项目
+
+如果这个项目对你有帮助，欢迎赞助支持：
+
+| 平台 | 链接 | 说明 |
+|------|------|------|
+| 🇨🇳 爱发电 | [afdian.com/@Zeon7744](https://afdian.com) | 支付宝/微信支付 |
+| 🌍 GitHub Sponsors | [github.com/sponsors/Zeon7744](https://github.com/sponsors) | PayPal/Stripe |
+| 📦 Gitee | [gitee.com/Zeon7744/crypto-mlp-high-confidence](https://gitee.com) | 国内同步 |
+
+---
+
 ## 📄 许可证
 
 MIT License
@@ -235,7 +247,7 @@ MIT License
 <div align="center">
 
 **开发者**: Zeon7744  
-**最后更新**: 2026-09-01  
+**最后更新**: 2026-09-04  
 **GitHub**: https://github.com/Zeon7744/crypto-mlp-high-confidence
 
 *Vibe Coding · 高精度加密货币分析*
