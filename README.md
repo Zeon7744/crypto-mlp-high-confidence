@@ -5,9 +5,13 @@
 [![GitHub Stars](https://img.shields.io/github/stars/Zeon7744/crypto-mlp-high-confidence?style=social)](https://github.com/Zeon7744/crypto-mlp-high-confidence)
 [![Gitee stars](https://gitee.com/Zeon7744/crypto-mlp-high-confidence/badge/star.svg?theme=gvp)](https://gitee.com/Zeon7744/crypto-mlp-high-confidence)
 [![GitCode stars](https://gitcode.com/Zeon7744/crypto-mlp-high-confidence/stars/badge)](https://gitcode.com/Zeon7744/crypto-mlp-high-confidence)
-[![CV Accuracy](https://img.shields.io/badge/CV_Accuracy-92.94%25-brightgreen)]()
-[![Confidence](https://img.shields.io/badge/Avg_Confidence-91.2%25-orange)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue)](https://github.com/Zeon7744/crypto-mlp-high-confidence/releases/tag/v1.0.0)
+[![CV Accuracy](https://img.shields.io/badge/CV_Accuracy-92.94%25-brightgreen)]()
+
+## 在线演示
+
+- [GitHub Pages](https://zeon7744.github.io/crypto-mlp-high-confidence/)
 
 ## 简介
 
@@ -22,14 +26,14 @@
 
 ## 模型表现
 
-| 模型 | 准确率 |
-|------|--------|
-| Random Forest | 89.1% |
-| Gradient Boosting | 90.3% |
-| MLP (主模型) | 92.94% |
-| Logistic Regression | 87.5% |
-| SVM | 88.2% |
-| **集成投票** | **92.94%** |
+| 模型 | CV准确率 | 权重 |
+|------|---------|------|
+| Random Forest | 92.94% | 0.30 |
+| Logistic Regression | 92.94% | 0.15 |
+| Gradient Boosting | 90.22% | 0.25 |
+| MLP Neural Net | 84.34% | 0.20 |
+| SVM | 50.59% | 0.03 |
+| **集成投票** | **92.94%** | — |
 
 ## 快速开始
 
@@ -37,7 +41,7 @@
 git clone https://github.com/Zeon7744/crypto-mlp-high-confidence.git
 cd crypto-mlp-high-confidence
 pip install -r requirements.txt
-python main.py
+python advanced_analyzer.py
 ```
 
 ## 多平台镜像
@@ -75,4 +79,4 @@ python main.py
 
 ---
 
-*由 [Zeon7744](https://github.com/Zeon7744) 维护 · MLP + 五模型投票 · 三平台同步*
+*由 [Zeon7744](https://github.com/Zeon7744) 维护 · MLP + 五模型投票 · CV 92.94% · 三平台同步*
