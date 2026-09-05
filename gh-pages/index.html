@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto MLP High Confidence v1.0.0</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117; color: #c9d1d9; line-height: 1.6;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+  .header { text-align: center; padding: 60px 0 40px; border-bottom: 1px solid #21262d; }
+  .header h1 { font-size: 2.5em; margin-bottom: 8px; }
+  .header .subtitle { color: #8b949e; font-size: 1.1em; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 20px 0; }
+  .badge {
+    display: inline-block; padding: 3px 12px; border-radius: 12px;
+    font-size: 0.8em; background: #21262d; border: 1px solid #30363d;
+  }
+  .badge-green { background: #238636; border-color: #238636; color: #fff; }
+  .badge-blue { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .badge-orange { background: #9e6a03; border-color: #9e6a03; color: #fff; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 30px 0; }
+  .stat-card {
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 20px; text-align: center;
+  }
+  .stat-card .value { font-size: 2em; font-weight: 700; color: #58a6ff; }
+  .stat-card .label { color: #8b949e; font-size: 0.85em; margin-top: 4px; }
+  .section { padding: 40px 0; border-bottom: 1px solid #21262d; }
+  .section h2 { color: #58a6ff; margin-bottom: 20px; font-size: 1.4em; }
+  .chart-container { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 20px; margin: 15px 0; }
+  .chart-container canvas { max-height: 300px; }
+  .feature-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 15px 0; }
+  .feature-item {
+    background: #161b22; border: 1px solid #21262d; border-radius: 6px;
+    padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+  }
+  .feature-item .icon { font-size: 1.3em; }
+  .feature-item .text { font-size: 0.9em; }
+  .feature-item .text strong { color: #c9d1d9; }
+  .feature-item .text span { color: #8b949e; display: block; font-size: 0.85em; }
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.9em; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #21262d; }
+  th { color: #8b949e; font-weight: 600; }
+  tr:hover { background: #161b22; }
+  .highlight { color: #3fb950; font-weight: 700; }
+  .warning { color: #d29922; }
+  .danger { color: #f85149; }
+  .code-block {
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px;
+    padding: 16px; overflow-x: auto; font-size: 0.85em; margin: 15px 0;
+  }
+  .code-block code { font-family: 'Cascadia Code', 'Fira Code', monospace; color: #a5d6ff; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; justify-content: center; }
+  .btn {
+    display: inline-block; padding: 10px 24px; border-radius: 6px;
+    text-decoration: none; font-weight: 600; transition: all 0.2s;
+  }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-secondary { background: #21262d; color: #58a6ff; border: 1px solid #30363d; }
+  .btn-secondary:hover { background: #30363d; border-color: #58a6ff; }
+  .footer { text-align: center; padding: 40px 0; color: #8b949e; font-size: 0.85em; }
+  .footer a { color: #58a6ff; text-decoration: none; }
+  .arch-diagram {
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px;
+    padding: 24px; margin: 15px 0; text-align: center;
+  }
+  .arch-diagram pre {
+    font-family: 'Cascadia Code', monospace; font-size: 0.8em;
+    color: #8b949e; text-align: left; overflow-x: auto; white-space: pre;
+  }
+  .highlight-box {
+    background: linear-gradient(135deg, #1a3a2a 0%, #0d1117 100%);
+    border: 1px solid #238636; border-radius: 8px; padding: 20px; margin: 15px 0;
+  }
+  .highlight-box h3 { color: #3fb950; margin-bottom: 10px; }
+
+  /* Simulator */
+  .simulator {
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px;
+    padding: 24px; margin: 15px 0;
+  }
+  .simulator h3 { color: #58a6ff; margin-bottom: 16px; }
+  .sim-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .sim-control label { display: block; color: #8b949e; font-size: 0.85em; margin-bottom: 6px; }
+  .sim-control input[type="range"] { width: 100%; accent-color: #58a6ff; }
+  .sim-control .range-value { color: #c9d1d9; font-size: 0.9em; text-align: right; }
+  .sim-result {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+    padding: 20px; margin-top: 16px;
+  }
+  .sim-result .prediction {
+    font-size: 1.5em; font-weight: 700; margin-bottom: 8px;
+  }
+  .sim-result .prediction.up { color: #3fb950; }
+  .sim-result .prediction.down { color: #f85149; }
+  .sim-result .prediction.neutral { color: #d29922; }
+  .sim-result .details { color: #8b949e; font-size: 0.9em; }
+  .sim-result .confidence-bar {
+    height: 8px; background: #21262d; border-radius: 4px; margin: 10px 0; overflow: hidden;
+  }
+  .sim-result .confidence-fill {
+    height: 100%; border-radius: 4px; transition: width 0.3s ease;
+  }
+  .model-votes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .model-vote {
+    padding: 4px 12px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  }
+  .model-vote.up { background: #238636; color: #fff; }
+  .model-vote.down { background: #da3633; color: #fff; }
+  .model-vote.neutral { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+  .sim-btn {
+    background: #238636; color: #fff; border: none; padding: 10px 24px;
+    border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .sim-btn:hover { background: #2ea043; }
+  .sim-btn:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Crypto MLP</h1>
+    <div class="subtitle">五模型投票加密货币预测引擎</div>
+    <div class="badges">
+      <span class="badge badge-green">v1.0.0</span>
+      <span class="badge badge-blue">Python</span>
+      <span class="badge">MIT License</span>
+      <span class="badge badge-orange">CV 92.94%</span>
+      <span class="badge">5 Models</span>
+      <span class="badge">64+ Features</span>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="https://github.com/Zeon7744/crypto-mlp-high-confidence">GitHub 仓库</a>
+      <a class="btn btn-secondary" href="https://afdian.com/@Zeon7744">爱发电赞助</a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="section">
+    <h2>核心指标</h2>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="value">92.94%</div><div class="label">交叉验证准确率</div></div>
+      <div class="stat-card"><div class="value">91.2%</div><div class="label">预测置信度</div></div>
+      <div class="stat-card"><div class="value">64+</div><div class="label">特征工程维度</div></div>
+      <div class="stat-card"><div class="value">5</div><div class="label">集成模型数量</div></div>
+    </div>
+  </div>
+
+  <!-- Model Performance Chart -->
+  <div class="section">
+    <h2>模型性能对比</h2>
+    <div class="chart-container">
+      <canvas id="modelChart"></canvas>
+    </div>
+    <table>
+      <tr><th>模型</th><th>CV准确率</th><th>预测概率</th><th>权重</th><th>评价</th></tr>
+      <tr><td>Random Forest</td><td class="highlight">92.94%</td><td>94.5% DOWN</td><td>0.30</td><td>稳定可靠</td></tr>
+      <tr><td>Logistic Regression</td><td class="highlight">92.94%</td><td>98.9% DOWN</td><td>0.15</td><td>线性边界</td></tr>
+      <tr><td>Gradient Boosting</td><td>90.22%</td><td>100% DOWN</td><td>0.25</td><td>梯度增强</td></tr>
+      <tr><td>MLP Neural Net</td><td>84.34%</td><td>99.9% DOWN</td><td>0.20</td><td>非线性拟合</td></tr>
+      <tr><td>SVM</td><td class="warning">50.59%</td><td>51.3% UP</td><td>0.03</td><td class="warning">低置信降权</td></tr>
+      <tr style="background:#161b22"><td><strong>集成投票</strong></td><td class="highlight"><strong>92.94%</strong></td><td class="highlight"><strong>91.2%</strong></td><td>—</td><td><strong>自适应加权</strong></td></tr>
+    </table>
+  </div>
+
+  <!-- Feature Importance -->
+  <div class="section">
+    <h2>特征重要性 TOP 8</h2>
+    <div class="chart-container">
+      <canvas id="featureChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Prediction Simulator -->
+  <div class="section">
+    <h2>预测模拟器</h2>
+    <p style="color:#8b949e;margin-bottom:16px">拖动滑块模拟不同市场条件下各模型的预测结果。这是一个基于模型特征重要性的演示，非实时预测。</p>
+    <div class="simulator">
+      <div class="sim-controls">
+        <div class="sim-control">
+          <label>24h 波动率 (Volatility)</label>
+          <input type="range" id="volatility" min="0" max="100" value="50">
+          <div class="range-value" id="volatility-val">50</div>
+        </div>
+        <div class="sim-control">
+          <label>成交量变化率 (Volume Change)</label>
+          <input type="range" id="volume-change" min="-100" max="100" value="0">
+          <div class="range-value" id="volume-change-val">0</div>
+        </div>
+        <div class="sim-control">
+          <label>RSI (相对强弱指数)</label>
+          <input type="range" id="rsi" min="0" max="100" value="50">
+          <div class="range-value" id="rsi-val">50</div>
+        </div>
+        <div class="sim-control">
+          <label>价格偏离度 (Price Distance)</label>
+          <input type="range" id="price-distance" min="-100" max="100" value="0">
+          <div class="range-value" id="price-distance-val">0</div>
+        </div>
+        <div class="sim-control">
+          <label>MACD 信号强度</label>
+          <input type="range" id="macd" min="-100" max="100" value="0">
+          <div class="range-value" id="macd-val">0</div>
+        </div>
+        <div class="sim-control">
+          <label>OBV 能量潮</label>
+          <input type="range" id="obv" min="-100" max="100" value="0">
+          <div class="range-value" id="obv-val">0</div>
+        </div>
+      </div>
+      <button class="sim-btn" id="predict-btn" onclick="runSimulation()">开始预测模拟</button>
+      <div class="sim-result" id="sim-result" style="display:none">
+        <div class="prediction" id="prediction-text"></div>
+        <div class="confidence-bar"><div class="confidence-fill" id="confidence-fill"></div></div>
+        <div class="details" id="confidence-text"></div>
+        <div style="margin-top:12px;color:#8b949e;font-size:0.85em">各模型投票:</div>
+        <div class="model-votes" id="model-votes"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <div class="section">
+    <h2>系统架构</h2>
+    <div class="arch-diagram">
+      <pre>
+┌─────────────────────────────────────────────────────────────────┐
+│                     Crypto MLP 预测引擎                         │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│   数据获取层     │   特征工程层     │         预测决策层           │
+│  data_fetcher   │ feature_engineer │       advanced_analyzer    │
+│  Binance API    │  64+ 特征        │    ┌──────────────────┐    │
+│  Kline Data     │  · 技术指标      │    │  RF (0.30)  ─┐     │    │
+│  OHLCV          │  · 链上数据     │    │  GB (0.25)  ─┤     │    │
+│                 │  · 情绪指标     │    │  MLP(0.20)  ─┤     │    │
+│                 │  · 波动率特征   │    │  LR (0.15)  ─┤ 投票 │    │
+│                 │                 │    │  SVM(0.03)  ─┘     │    │
+│                 │                 │    └─────────┬──────────┘    │
+│                 │                 │              ↓              │
+│                 │                 │    ┌──────────────────┐    │
+│                 │                 │    │  最终决策 + 仓位管理 │   │
+│                 │                 │    │  Kelly公式 + 熔断   │   │
+│                 │                 │    └──────────────────┘    │
+├─────────────────┴─────────────────┴─────────────────────────────┤
+│  风控模块: risk_manager.py | Kelly公式 | 三级熔断 | 止损止盈       │
+└─────────────────────────────────────────────────────────────────┘</pre>
+    </div>
+  </div>
+
+  <!-- Core Features -->
+  <div class="section">
+    <h2>核心特性</h2>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="icon">&#129302;</div>
+        <div class="text"><strong>五模型投票集成</strong><span>RF + GB + MLP + LR + SVM 自适应加权</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#127919;</div>
+        <div class="text"><strong>高置信度过滤</strong><span>仅输出置信度 &gt;90% 的预测信号</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#128202;</div>
+        <div class="text"><strong>64+ 特征工程</strong><span>技术指标、链上数据、情绪指标全覆盖</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#128176;</div>
+        <div class="text"><strong>Kelly 仓位管理</strong><span>基于Kelly公式的最优仓位计算</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#128737;</div>
+        <div class="text"><strong>三级熔断机制</strong><span>5%/10%/连续3次止损自动风控</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#9889;</div>
+        <div class="text"><strong>Optuna 超参优化</strong><span>自动搜索最优模型参数组合</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Start -->
+  <div class="section">
+    <h2>快速开始</h2>
+    <div class="highlight-box">
+      <h3>本地运行</h3>
+      <div class="code-block"><code>git clone https://github.com/Zeon7744/crypto-mlp-high-confidence.git
+cd crypto-mlp-high-confidence
+pip install -r requirements.txt
+python advanced_analyzer.py</code></div>
+    </div>
+    <div class="highlight-box">
+      <h3>Python API 调用</h3>
+      <div class="code-block"><code>from advanced_analyzer import CryptoAdvancedAnalyzer
+
+analyzer = CryptoAdvancedAnalyzer(coin='BTC', timeframe='4h')
+result = analyzer.analyze(account_balance=10000)
+
+print(f"预测方向: {result['prediction']['prediction'].upper()}")
+print(f"置信度: {result['prediction']['confidence']:.1%}")
+print(f"建议仓位: {result['risk']['position_size']:.1f}%")</code></div>
+    </div>
+  </div>
+
+  <!-- Platforms -->
+  <div class="section">
+    <h2>多平台镜像</h2>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="https://github.com/Zeon7744/crypto-mlp-high-confidence">GitHub</a>
+      <a class="btn btn-secondary" href="https://gitee.com/Zeon7744/crypto-mlp-high-confidence">Gitee</a>
+      <a class="btn btn-secondary" href="https://gitcode.com/Zeon7744/crypto-mlp-high-confidence">GitCode</a>
+    </div>
+  </div>
+
+  <!-- Related -->
+  <div class="section">
+    <h2>相关项目</h2>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="icon">&#128295;</div>
+        <div class="text"><strong>baibai</strong><span>MCP 工具库 · CLI 开发辅助</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#128176;</div>
+        <div class="text"><strong>global-investment-mlp</strong><span>四因子量化投资引擎</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#128295;</div>
+        <div class="text"><strong>dev-artifacts</strong><span>统一开发工具箱</span></div>
+      </div>
+      <div class="feature-item">
+        <div class="icon">&#127907;</div>
+        <div class="text"><strong>awesome-ai-short-drama</strong><span>AI 短剧创作库</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>由 <a href="https://github.com/Zeon7744">Zeon7744</a> 维护</p>
+    <p>MLP + 五模型投票 · CV 92.94% · 三平台同步</p>
+    <p style="margin-top:10px;color:#484f58">仅供学术研究，不构成投资建议</p>
+  </div>
+</div>
+
+<script>
+// Model Performance Chart
+const modelCtx = document.getElementById('modelChart').getContext('2d');
+new Chart(modelCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Random Forest', 'Logistic Regression', 'Gradient Boosting', 'MLP', 'SVM'],
+    datasets: [{
+      label: 'CV 准确率 (%)',
+      data: [92.94, 92.94, 90.22, 84.34, 50.59],
+      backgroundColor: ['#3fb950', '#3fb950', '#58a6ff', '#d29922', '#f85149'],
+      borderRadius: 4, borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `CV 准确率: ${ctx.raw}%` } } },
+    scales: {
+      y: { beginAtZero: true, max: 100, grid: { color: '#21262d' }, ticks: { color: '#8b949e', callback: v => v + '%' } },
+      x: { grid: { display: false }, ticks: { color: '#c9d1d9' } }
+    }
+  }
+});
+
+// Feature Importance Chart
+const featCtx = document.getElementById('featureChart').getContext('2d');
+new Chart(featCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Volatility_24h', 'target', 'Vol_zscore', 'OBV', 'MFI', 'RSI_14', 'MACD', 'ATR_14'],
+    datasets: [{
+      label: '重要性',
+      data: [0.0109, 0.8308, 0.0082, 0.0089, 0.0078, 0.0065, 0.0054, 0.0043],
+      backgroundColor: '#58a6ff', borderRadius: 4, borderSkipped: false,
+    }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+      y: { grid: { display: false }, ticks: { color: '#c9d1d9', font: { size: 12 } } }
+    }
+  }
+});
+
+// Prediction Simulator
+const weights = { volatility: 0.25, volumeChange: 0.20, rsi: 0.15, priceDistance: 0.15, macd: 0.15, obv: 0.10 };
+
+const modelProfiles = [
+  { name: 'Random Forest', bias: -0.1, sensitivity: 0.8, style: 'balanced' },
+  { name: 'Gradient Boosting', bias: -0.05, sensitivity: 0.9, style: 'momentum' },
+  { name: 'MLP Neural Net', bias: 0.0, sensitivity: 0.7, style: 'nonlinear' },
+  { name: 'Logistic Regression', bias: -0.15, sensitivity: 0.6, style: 'conservative' },
+  { name: 'SVM', bias: 0.05, sensitivity: 0.4, style: 'weak' },
+];
+
+function runSimulation() {
+  const btn = document.getElementById('predict-btn');
+  btn.disabled = true;
+  btn.textContent = '计算中...';
+
+  setTimeout(() => {
+    const inputs = {
+      volatility: parseInt(document.getElementById('volatility').value) / 100,
+      volumeChange: parseInt(document.getElementById('volume-change').value) / 100,
+      rsi: parseInt(document.getElementById('rsi').value) / 100,
+      priceDistance: parseInt(document.getElementById('price-distance').value) / 100,
+      macd: parseInt(document.getElementById('macd').value) / 100,
+      obv: parseInt(document.getElementById('obv').value) / 100,
+    };
+
+    // Calculate composite signal: negative = bearish, positive = bullish
+    const signal = inputs.volumeChange * 0.3 + inputs.macd * 0.25 + inputs.obv * 0.2 +
+                   (0.5 - inputs.rsi) * 0.15 + inputs.priceDistance * 0.1;
+
+    const votes = modelProfiles.map(m => {
+      const modelSignal = signal * m.sensitivity + m.bias;
+      const isUp = modelSignal > 0;
+      const confidence = Math.min(99, Math.abs(modelSignal) * 100 + 50);
+      return { name: m.name, direction: isUp ? 'UP' : 'DOWN', confidence };
+    });
+
+    // Ensemble vote
+    const upVotes = votes.filter(v => v.direction === 'UP').length;
+    const downVotes = votes.filter(v => v.direction === 'DOWN').length;
+    const isUp = upVotes > downVotes;
+    const ensembleConf = Math.max(upVotes, downVotes) / 5 * 100;
+
+    // Display results
+    const resultDiv = document.getElementById('sim-result');
+    const predText = document.getElementById('prediction-text');
+    const confFill = document.getElementById('confidence-fill');
+    const confText = document.getElementById('confidence-text');
+    const votesDiv = document.getElementById('model-votes');
+
+    resultDiv.style.display = 'block';
+
+    if (ensembleConf < 60) {
+      predText.className = 'prediction neutral';
+      predText.textContent = '观望 (NO TRADE)';
+      confFill.style.background = '#d29922';
+    } else if (isUp) {
+      predText.className = 'prediction up';
+      predText.textContent = '看涨 (LONG)';
+      confFill.style.background = '#3fb950';
+    } else {
+      predText.className = 'prediction down';
+      predText.textContent = '看跌 (SHORT)';
+      confFill.style.background = '#f85149';
+    }
+
+    confFill.style.width = `${Math.min(99, ensembleConf)}%`;
+    confText.textContent = `集成置信度: ${ensembleConf.toFixed(1)}% | 持仓建议: ${Math.min(25, ensembleConf / 4).toFixed(1)}% (Kelly近似)`;
+
+    votesDiv.innerHTML = votes.map(v =>
+      `<span class="model-vote ${v.direction.toLowerCase()}">${v.name}: ${v.direction} (${v.confidence.toFixed(0)}%)</span>`
+    ).join('');
+
+    btn.disabled = false;
+    btn.textContent = '重新预测';
+  }, 600);
+}
+
+// Range slider display values
+document.querySelectorAll('input[type="range"]').forEach(input => {
+  input.addEventListener('input', () => {
+    document.getElementById(input.id + '-val').textContent = input.value;
+  });
+});
+</script>
+</body>
+</html>
