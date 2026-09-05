@@ -11,14 +11,14 @@
 
 ## 简介
 
-基于多层感知机 (MLP) 的加密货币价格预测系统，采用五模型投票机制，交叉验证准确率达 92.94%。
+基于**多层感知机 (MLP)** 的加密货币价格预测系统，采用五模型投票机制，交叉验证准确率达 **92.94%**。
 
 ## 核心特性
 
-- 五模型投票: RF + GB + MLP + LR + SVM
-- 高置信度评估: 过滤低质量信号
-- 多币种支持: BTC/ETH/SOL/BNB/ADA
-- 回测引擎: 24 个月模拟交易
+- **五模型投票**: Random Forest + Gradient Boosting + MLP + Logistic Regression + SVM
+- **高置信度评估**: 过滤低质量信号，只输出高置信度预测
+- **多币种支持**: BTC / ETH / SOL / BNB / ADA
+- **回测引擎**: 24 个月模拟交易，验证策略有效性
 
 ## 模型表现
 
@@ -36,26 +36,43 @@
 ```bash
 git clone https://github.com/Zeon7744/crypto-mlp-high-confidence.git
 cd crypto-mlp-high-confidence
+pip install -r requirements.txt
+python main.py
 ```
-
-## 文档
-
-- [README](README.md)
-- [CHANGELOG](CHANGELOG.md)
 
 ## 多平台镜像
 
 | 平台 | 链接 |
 |------|------|
-| GitHub (主仓库) | https://github.com/Zeon7744/crypto-mlp-high-confidence |
-| Gitee | https://gitee.com/Zeon7744/crypto-mlp-high-confidence |
-| GitCode | https://gitcode.com/Zeon7744/crypto-mlp-high-confidence |
+| GitHub (主仓库) | [GitHub](https://github.com/Zeon7744/crypto-mlp-high-confidence) |
+| Gitee | [Gitee](https://gitee.com/Zeon7744/crypto-mlp-high-confidence) |
+| GitCode | [GitCode](https://gitcode.com/Zeon7744/crypto-mlp-high-confidence) |
 
 ## 赞助与支持
 
-- [爱发电](https://afdian.com/@Zeon7744)
-- [GitHub Sponsors](https://github.com/sponsors/Zeon7744)
+| 平台 | 链接 | 支付方式 |
+|------|------|----------|
+| ☕ **爱发电** | [afdian.com/@Zeon7744](https://afdian.com/@Zeon7744) | 支付宝 / 微信支付 |
+| 🌍 **GitHub Sponsors** | [github.com/sponsors/Zeon7744](https://github.com/sponsors/Zeon7744) | PayPal / Stripe |
+
+### 赞助档位
+
+| 档位 | 价格 | 权益 |
+|------|------|------|
+| ☕ 请喝咖啡 | ¥18/月 | 感谢支持 |
+| 🍺 请喝啤酒 | ¥58/月 | 优先回复 Issue |
+| 🎁 项目赞助 | ¥188/月 | 定制功能需求 |
+
+## 相关项目
+
+- [baibai](https://github.com/Zeon7744/baibai) — MCP 工具库
+- [global-investment-mlp](https://github.com/Zeon7744/global-investment-mlp) — 量化投资框架
+- [dev-artifacts](https://github.com/Zeon7744/dev-artifacts) — 开发工具箱
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！详见 [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 
-*Built with by Zeon7744 · 三平台同步: GitHub / Gitee / GitCode*
+*由 [Zeon7744](https://github.com/Zeon7744) 维护 · MLP + 五模型投票 · 三平台同步*
