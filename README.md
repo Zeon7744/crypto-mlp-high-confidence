@@ -7,11 +7,11 @@
 [![GitCode stars](https://gitcode.com/Zeon7744/crypto-mlp-high-confidence/stars/badge)](https://gitcode.com/Zeon7744/crypto-mlp-high-confidence)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue)](https://github.com/Zeon7744/crypto-mlp-high-confidence/releases/tag/v1.0.0)
-[![CV Accuracy](https://img.shields.io/badge/CV_Accuracy-92.94%25-brightgreen)]()
+[![CV Accuracy](https://img.shields.io/badge/CV_Accuracy-92.94%25-brightgreen)](REPORT.md)
 
 ## 在线演示
 
-- [GitHub Pages](https://zeon7744.github.io/crypto-mlp-high-confidence/)
+- [GitHub Pages 交互模拟器](https://zeon7744.github.io/crypto-mlp-high-confidence/)
 
 ## 简介
 
@@ -23,6 +23,7 @@
 - **高置信度评估**: 过滤低质量信号，只输出高置信度预测
 - **多币种支持**: BTC / ETH / SOL / BNB / ADA
 - **回测引擎**: 24 个月模拟交易，验证策略有效性
+- **凯利公式**: 基于胜率的最优仓位管理
 
 ## 模型表现
 
@@ -43,6 +44,11 @@ cd crypto-mlp-high-confidence
 pip install -r requirements.txt
 python advanced_analyzer.py
 ```
+
+## 文档
+
+- [REPORT.md](REPORT.md) — 完整分析报告
+- [CHANGELOG.md](CHANGELOG.md) — 版本历史
 
 ## 多平台镜像
 
@@ -76,6 +82,8 @@ python advanced_analyzer.py
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！详见 [CONTRIBUTING.md](CONTRIBUTING.md)
+
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 ---
 
