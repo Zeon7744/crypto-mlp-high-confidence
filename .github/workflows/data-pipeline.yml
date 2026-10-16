@@ -14,17 +14,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
-      - name: Refresh crypto market data
-        run: |
-          python3 - <<'PY'
-          import os, json, datetime
-          # MVP 占位：接 CoinGecko 免费公共 API 拉行情喂 data_fetcher
-          os.makedirs("models", exist_ok=True)
-          ts = datetime.datetime.now().isoformat()
-          json.dump({"ts": ts, "note": "MVP 占位，接 CoinGecko 后填充"},
-                    open("models/last_refresh.json","w"), indent=2)
-          print("refresh @", ts)
-          PY
+      - name: Refresh crypto market data (CoinGecko，拉不到自动回退占位)
+        run: python refresh_report.py
       - name: Commit refresh snapshot
         run: |
           git config user.name "crypto-bot"; git config user.email "bot@example.com"
