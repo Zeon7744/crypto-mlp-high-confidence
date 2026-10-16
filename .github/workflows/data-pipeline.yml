@@ -25,15 +25,3 @@ jobs:
           git config user.name "crypto-bot"; git config user.email "bot@example.com"
           git add models/last_refresh.json && (git commit -m "chore(crypto-mlp): 行情刷新 $(date -u +%FT%TZ)" || echo "no change"); git push
 
-  pages:
-    runs-on: ubuntu-latest
-    needs: refresh
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy models snapshot
-        run: |
-          mkdir -p .github && echo 'crypto-mlp' > .github/URL
-      - name: Publish to Pages
-        uses: actions/deploy-pages@v4
-        with:
-          page: web
