@@ -1,7 +1,18 @@
 {
-  "ts": "2026-10-16T11:35:34.054479Z",
-  "source": "placeholder",
+  "ts": "2026-10-16T13:53:26.679418Z",
+  "source": "coingecko",
   "prices": {
-    "note": "CoinGecko \u4e0d\u53ef\u7528\uff0c\u5360\u4f4d"
+    "bitcoin": {
+      "usd": 81685,
+      "cny": 546589
+    },
+    "ethereum": {
+      "usd": 2448.77,
+      "cny": 16385.73
+    },
+    "solana": {
+      "usd": 105.17,
+      "cny": 703.75
+    }
   }
 }
