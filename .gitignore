@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+models/*.pkl
+models/*.joblib
+!models/
+data/*.csv
+!data/
+.DS_Store
