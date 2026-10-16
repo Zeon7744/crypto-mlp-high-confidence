@@ -31,3 +31,16 @@ jobs:
       - uses: actions/deploy-pages@v4
         with:
           page: web
+
+  pages:
+    runs-on: ubuntu-latest
+    needs: refresh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy models snapshot
+        run: |
+          mkdir -p .github && echo 'crypto-mlp' > .github/URL
+      - name: Publish to Pages
+        uses: actions/deploy-pages@v4
+        with:
+          page: web
