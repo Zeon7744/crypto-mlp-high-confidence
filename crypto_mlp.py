@@ -325,7 +325,10 @@ class CryptoMLPAnalyzer:
                  walk_forward: bool = True, train_window: int = 300,
                  predict_threshold: float = 0.6,
                  position_pct: float = 0.95,
-                 risk_free_annual: float = 0.02) -> Dict:
+                 risk_free_annual: float = 0.02,
+                 position_sizing: str = 'fixed',
+                 kelly_fraction: float = 0.25,
+                 volatility_target_annual: float = 0.20) -> Dict:
         """
         回测策略（原理层完善版）
 
@@ -349,6 +352,9 @@ class CryptoMLPAnalyzer:
             predict_threshold: 触发交易的置信度阈值
             position_pct: 建仓仓位比例
             risk_free_annual: 年化无风险利率
+            position_sizing: 'fixed'(向后兼容)/'fractional_kelly'(rolling 胜率×kelly_fraction)/'atr'(按目标年化波动率反推,高波动自动降仓)
+            kelly_fraction: 分数 Kelly 系数（fractional_kelly 时生效, 业界 0.25-0.5）
+            volatility_target_annual: ATR sizing 目标年化波动率（atr 时生效）
 
         Returns:
             回测结果 dict（含净收益、Sharpe/Sortino/Calmar/MaxDD、胜率、平均持仓期等）
@@ -383,8 +389,47 @@ class CryptoMLPAnalyzer:
         closed_pnls = []   # 每笔平仓净盈亏（含成本）
         holding_bars = []  # 每笔持仓时长（bar 数）
         cost_accrued = 0.0
+        # sizing 辅助：ATR 窗口收益/波动（用于 atr 波动率目标 & fractional_kelly 的盈亏比）
+        atr_window = 14
 
         warmup = min(train_window, max(n // 2, 60))  # 首个可用预测起点
+
+        def _atr_sizing_frac(i):
+            """按 i 之前 atr_window 段的 bar 收益波动，反推目标年化波动率仓位比例。"""
+            if i - atr_window < 1:
+                return position_pct
+            seg = close_arr[i - atr_window:i]
+            r = np.diff(seg) / seg[:-1]
+            vol_bar = float(np.std(r)) if len(r) > 1 else 0.0
+            vol_annual = vol_bar * np.sqrt(bars_per_year)
+            if vol_annual <= 1e-9:
+                return position_pct
+            return max(0.05, min(position_pct, volatility_target_annual / vol_annual))
+
+        def _kelly_sizing_frac(i):
+            """分数 Kelly：用 rolling 已平仓盈亏算 win_rate/盈亏比，×kelly_fraction。"""
+            closed = closed_pnls[-50:]
+            base = position_pct if len(closed) < 8 else 0.5
+            if len(closed) >= 8:
+                wins = [x for x in closed if x > 0]
+                losses = [x for x in closed if x <= 0]
+                p = len(wins) / len(closed)
+                avg_win = (sum(wins) / len(wins)) if wins else 0.0
+                avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
+                if p <= 0.5 or avg_loss <= 1e-9:
+                    base = min(base, 0.1)          # 无优势 → 保守降仓
+                else:
+                    b = avg_win / avg_loss
+                    kelly = p - (1 - p) / b
+                    base = max(0.0, min(0.25, kelly)) * kelly_fraction
+            return max(0.05, min(base, 1.0))
+
+        def _position_frac(i):
+            if position_sizing == 'atr':
+                return _atr_sizing_frac(i)
+            if position_sizing == 'fractional_kelly':
+                return _kelly_sizing_frac(i)
+            return position_pct
 
         for i in range(warmup, n):
             price_now = close_arr[i]
@@ -426,8 +471,9 @@ class CryptoMLPAnalyzer:
 
             executed = False
             if pred == 1 and confidence > predict_threshold and position_shares == 0:
-                # 建仓：按占当前净值比例买入，扣手续费+滑点
-                invest = bar_value * position_pct
+                # 建仓：动态仓位比例（fixed/fractional_kelly/atr），扣手续费+滑点
+                pos_frac = _position_frac(i)
+                invest = bar_value * pos_frac
                 if invest > 0 and fill_price_buy > 0:
                     fee = invest * fees_pct
                     position_shares = (invest - fee) / fill_price_buy
@@ -486,6 +532,7 @@ class CryptoMLPAnalyzer:
             'initial_balance': initial_balance,
             'final_balance': balance,
             'total_return': (balance - initial_balance) / initial_balance,
+            'position_sizing': position_sizing,
             'total_trades': len([t for t in trades if t['type'] == 'sell']),
             'round_trips': len(closed_pnls),
             'win_rate': (sum(1 for p in closed_pnls if p > 0) / len(closed_pnls)) if closed_pnls else 0.0,
