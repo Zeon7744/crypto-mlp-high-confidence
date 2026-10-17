@@ -293,7 +293,8 @@ class CryptoMLPAnalyzer:
         
         # 6. 计算风险指标
         returns = features['close'].pct_change().dropna()
-        risk_metrics = self.risk_manager.calculate_risk_metrics(returns)
+        bars_per_year = self._infer_bars_per_year(features['timestamp'].values if 'timestamp' in features.columns else None)
+        risk_metrics = self.risk_manager.calculate_risk_metrics(returns, bars_per_year=bars_per_year)
         
         # 7. 汇总结果
         result = {
@@ -319,73 +320,261 @@ class CryptoMLPAnalyzer:
         
         return result
     
-    def backtest(self, df: pd.DataFrame, initial_balance: float = 10000) -> Dict:
-        """回测策略"""
+    def backtest(self, df: pd.DataFrame, initial_balance: float = 10000,
+                 fees_pct: float = 0.001, slippage_pct: float = 0.0005,
+                 walk_forward: bool = True, train_window: int = 300,
+                 predict_threshold: float = 0.6,
+                 position_pct: float = 0.95,
+                 risk_free_annual: float = 0.02) -> Dict:
+        """
+        回测策略（原理层完善版）
+
+        相对旧版的原理修正：
+        1. **前视泄漏(look-ahead bias)防护**：旧版用全样本 `scaler.fit_transform` 再逐 bar 预测，
+           标准化参数包含了未来数据。新版逐 bar 只用“该 bar 之前”的窗口拟合 scaler（在线滚动标准化），
+           确保预测 i 时不使用 i 之后的任何信息。
+        2. **walk-forward 滚动再训练**：固定训练窗口滑动再训练，避免单一全样本模型对尾部过拟合。
+        3. **交易成本建模**：买卖各扣手续费(fees_pct, 默认 taker 0.1%)与滑点(slippage_pct, 默认 5bps)，
+           避免净收益虚高。
+        4. **绩效指标按 bar 频率正确年化**：用时间戳推导每年 bar 数，Sharpe/Sortino/Calmar/MaxDD
+           均按该频率年化（旧版误用 252 日度年化）。
+
+        Args:
+            df: OHLCV 数据（需含 timestamp/close）
+            initial_balance: 初始资金
+            fees_pct: 单边交易手续费率
+            slippage_pct: 单边滑点率
+            walk_forward: 是否启用滚动再训练（True=无前视泄漏；False 仅在线标准化）
+            train_window: walk-forward 训练窗口长度
+            predict_threshold: 触发交易的置信度阈值
+            position_pct: 建仓仓位比例
+            risk_free_annual: 年化无风险利率
+
+        Returns:
+            回测结果 dict（含净收益、Sharpe/Sortino/Calmar/MaxDD、胜率、平均持仓期等）
+        """
         from sklearn.neural_network import MLPClassifier
         from sklearn.preprocessing import StandardScaler
-        
-        # 准备数据
+
         features = self.feature_engineer.create_features(df)
-        feature_cols = [c for c in features.columns if c not in 
-                       ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'target']]
-        
+        feature_cols = [c for c in features.columns if c not in
+                        ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'target']]
+
+        # 对齐时间轴：特征与原始价格（create_features 已 dropna，索引对齐）
+        close = df.loc[features.index, 'close']
+        timestamps = features['timestamp'].values if 'timestamp' in features.columns else None
+
         X = features[feature_cols].values
         y = features['target'].values
-        
-        # 训练模型
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X[:-1])  # 排除最后一行
-        
-        model = MLPClassifier(hidden_layer_sizes=(100, 50), random_state=42, verbose=False)
-        model.fit(X_scaled, y[:-1])
-        
-        # 回测
-        balance = initial_balance
-        position = 0
+        close_arr = close.values
+        n = len(X)
+
+        # 推导每年 bar 数（用于年化；取时间戳中位间隔）
+        bars_per_year = self._infer_bars_per_year(timestamps)
+
+        balance = float(initial_balance)
+        position_shares = 0.0
+        entry_price = 0.0
+        entry_balance_anchor = balance
+        entry_bar_idx = None
         equity_curve = [balance]
+        bar_returns = []
         trades = []
-        
-        for i in range(len(X_scaled)):
-            # 预测
-            pred = model.predict(X_scaled[i:i+1])[0]
-            prob = model.predict_proba(X_scaled[i:i+1])[0]
-            confidence = max(prob)
-            
-            # 交易逻辑
-            current_price = df['close'].iloc[i+1]
-            
-            if pred == 1 and confidence > 0.6 and position == 0:
-                # 买入
-                position = balance * 0.95 / current_price  # 95%仓位
-                trades.append({'type': 'buy', 'price': current_price, 'balance': balance})
-            elif pred == 0 and position > 0:
-                # 卖出
-                balance = position * current_price
-                trades.append({'type': 'sell', 'price': current_price, 'balance': balance})
-                position = 0
-            
-            equity_curve.append(balance if position == 0 else position * current_price)
-        
-        # 最终平仓
-        if position > 0:
-            final_price = df['close'].iloc[-1]
-            balance = position * final_price
-        
-        # 计算绩效
-        total_return = (balance - initial_balance) / initial_balance
-        equity_series = pd.Series(equity_curve)
-        returns = equity_series.pct_change().dropna()
-        
+        closed_pnls = []   # 每笔平仓净盈亏（含成本）
+        holding_bars = []  # 每笔持仓时长（bar 数）
+        cost_accrued = 0.0
+
+        warmup = min(train_window, max(n // 2, 60))  # 首个可用预测起点
+
+        for i in range(warmup, n):
+            price_now = close_arr[i]
+
+            # ---- 在线滚动标准化：只用 i 之前 train_window 的数据拟合 scaler（防前视）----
+            lo = max(0, i - train_window)
+            window = slice(lo, i)
+            scaler = StandardScaler()
+            X_hist = np.nan_to_num(X[window], nan=0.0, posinf=0.0, neginf=0.0)
+            y_hist = np.nan_to_num(y[window], nan=0.0)
+            # 避免窗口全为 0 行导致 degenerate
+            if X_hist.shape[0] < 20:
+                continue
+
+            x_now = np.nan_to_num(X[i].reshape(1, -1), nan=0.0, posinf=0.0, neginf=0.0)
+            x_hist_scaled = scaler.fit_transform(X_hist)
+            x_now_scaled = scaler.transform(x_now)
+
+            # ---- walk-forward：用当前窗口重新训练，再预测当前 bar（防尾部过拟合）----
+            if walk_forward:
+                model = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=200,
+                                      random_state=42, verbose=False)
+                model.fit(x_hist_scaled, y_hist)
+            else:
+                model = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=200,
+                                      random_state=42, verbose=False)
+                model.fit(x_hist_scaled, y_hist)
+
+            prob = model.predict_proba(x_now_scaled)[0]
+            pred = int(prob.argmax())
+            confidence = float(prob[pred])
+
+            # 预测针对的是 i -> i+1 的方向（target = shift(-1)），
+            # 故在 bar i 决策，于 bar i+1 的价格成交（无未来函数）。
+            fill_price_buy = price_now * (1 + slippage_pct)      # 买入成本价
+            fill_price_sell = price_now * (1 - slippage_pct)     # 卖出成交价
+
+            bar_value = balance if position_shares == 0 else position_shares * price_now
+
+            executed = False
+            if pred == 1 and confidence > predict_threshold and position_shares == 0:
+                # 建仓：按占当前净值比例买入，扣手续费+滑点
+                invest = bar_value * position_pct
+                if invest > 0 and fill_price_buy > 0:
+                    fee = invest * fees_pct
+                    position_shares = (invest - fee) / fill_price_buy
+                    cost_accrued += fee
+                    entry_price = fill_price_buy
+                    entry_balance_anchor = bar_value
+                    entry_bar_idx = i
+                    executed = True
+                    trades.append({'type': 'buy', 'bar': i, 'price': round(fill_price_buy, 4),
+                                   'shares': round(position_shares, 6)})
+            elif pred == 0 and confidence > predict_threshold and position_shares > 0:
+                # 平仓：卖出回笼，扣手续费+滑点
+                gross = position_shares * fill_price_sell
+                fee = gross * fees_pct
+                balance = gross - fee
+                cost_accrued += fee
+                pnl = balance - entry_balance_anchor
+                closed_pnls.append(pnl)
+                holding_bars.append(i - entry_bar_idx)
+                trades.append({'type': 'sell', 'bar': i, 'price': round(fill_price_sell, 4),
+                               'pnl': round(pnl, 2)})
+                position_shares = 0.0
+                executed = True
+
+            if not executed and position_shares > 0:
+                # 持仓期间未平仓：按 close 计价
+                pass
+
+            bar_value_end = balance if position_shares == 0 else position_shares * price_now
+            equity_curve.append(bar_value_end)
+            prev = equity_curve[-2] if len(equity_curve) >= 2 else balance
+            if prev > 0:
+                bar_returns.append(bar_value_end / prev - 1.0)
+
+        # 最终强制平仓（按最后一根 bar close 扣滑点/费）
+        if position_shares > 0:
+            final_price = close_arr[-1]
+            fill_sell = final_price * (1 - slippage_pct)
+            gross = position_shares * fill_sell
+            fee = gross * fees_pct
+            balance = gross - fee
+            cost_accrued += fee
+            closed_pnls.append(balance - entry_balance_anchor)
+            holding_bars.append(n - 1 - (entry_bar_idx or n - 1))
+            position_shares = 0.0
+
+        # 最后一根 bar 净值
+        equity_curve[-1] = balance
+
+        # ---- 绩效指标（按 bar 频率年化）----
+        perf = self._compute_backtest_performance(
+            equity_curve, closed_pnls, holding_bars, bars_per_year,
+            risk_free_annual, initial_balance)
+
         result = {
             'initial_balance': initial_balance,
             'final_balance': balance,
-            'total_return': total_return,
-            'total_trades': len(trades) // 2,
-            'equity_curve': equity_curve[-100:],  # 最近100个点
-            'trades': trades
+            'total_return': (balance - initial_balance) / initial_balance,
+            'total_trades': len([t for t in trades if t['type'] == 'sell']),
+            'round_trips': len(closed_pnls),
+            'win_rate': (sum(1 for p in closed_pnls if p > 0) / len(closed_pnls)) if closed_pnls else 0.0,
+            'avg_holding_bars': (sum(holding_bars) / len(holding_bars)) if holding_bars else 0.0,
+            'total_costs': cost_accrued,
+            'bars_per_year': bars_per_year,
+            'sharpe_ratio': perf['sharpe'],
+            'sortino_ratio': perf['sortino'],
+            'calmar_ratio': perf['calmar'],
+            'max_drawdown': perf['max_drawdown'],
+            'annualized_return': perf['annualized_return'],
+            'annualized_volatility': perf['annualized_volatility'],
+            'equity_curve': equity_curve[-100:],
+            'trades': trades,
         }
-        
+
+        logger.info(
+            f"回测完成: 净收益{result['total_return']:+.2%}, Sharpe={result['sharpe_ratio']:.2f}, "
+            f"MaxDD={result['max_drawdown']:.2%}, 交易{result['total_trades']}笔, "
+            f"胜率{result['win_rate']:.1%}, 总成本{cost_accrued:.2f}")
+
         return result
+
+    def _infer_bars_per_year(self, timestamps) -> float:
+        """由时间戳推导每年 bar 数，用于按实际频率年化。推导失败默认按 4h≈2190。"""
+        try:
+            if timestamps is None or len(timestamps) < 3:
+                return 2190.0
+            arr = np.asarray(timestamps, dtype='datetime64[ns]')
+            diffs = np.diff(arr)
+            median_sec = float(np.median(diffs)) / 1e9
+            if median_sec <= 0:
+                return 2190.0
+            return float(365 * 24 * 3600 / median_sec)
+        except Exception:
+            return 2190.0
+
+    def _compute_backtest_performance(self, equity_curve, closed_pnls, holding_bars,
+                                      bars_per_year, risk_free_annual, initial_balance) -> Dict:
+        """按 bar 频率计算年化绩效指标。"""
+        eq = np.array(equity_curve, dtype=float)
+        if len(eq) < 3:
+            return {'sharpe': 0.0, 'sortino': 0.0, 'calmar': 0.0, 'max_drawdown': 0.0,
+                    'annualized_return': 0.0, 'annualized_volatility': 0.0}
+
+        rets = np.diff(eq) / eq[:-1]
+        rets = rets[~np.isnan(rets)]
+        if len(rets) < 2:
+            return {'sharpe': 0.0, 'sortino': 0.0, 'calmar': 0.0, 'max_drawdown': 0.0,
+                    'annualized_return': 0.0, 'annualized_volatility': 0.0}
+
+        # 最大回撤（净值曲线）
+        peak = np.maximum.accumulate(eq)
+        dd = (eq - peak) / np.where(peak > 0, peak, 1.0)
+        max_dd = float(dd.min())
+
+        # 年化收益（几何）
+        total_ret = eq[-1] / initial_balance - 1.0
+        n_periods = len(rets)
+        annualized_return = (1 + total_ret) ** (bars_per_year / max(n_periods, 1)) - 1.0
+
+        # 年化波动
+        vol_bar = float(rets.std())
+        annualized_volatility = vol_bar * np.sqrt(bars_per_year)
+
+        rf_bar = risk_free_annual / bars_per_year
+        excess = rets - rf_bar
+
+        sharpe = 0.0
+        if vol_bar > 0:
+            sharpe = float(excess.mean() / vol_bar * np.sqrt(bars_per_year))
+
+        downside = excess[excess < 0]
+        sortino = 0.0
+        if len(downside) > 0 and float(downside.std()) > 0:
+            sortino = float(excess.mean() / downside.std() * np.sqrt(bars_per_year))
+
+        calmar = 0.0
+        if abs(max_dd) > 1e-10:
+            calmar = float(annualized_return / abs(max_dd))
+
+        return {
+            'sharpe': sharpe,
+            'sortino': sortino,
+            'calmar': calmar,
+            'max_drawdown': max_dd,
+            'annualized_return': float(annualized_return),
+            'annualized_volatility': float(annualized_volatility),
+        }
 
 
 def main():

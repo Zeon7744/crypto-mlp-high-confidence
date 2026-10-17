@@ -281,9 +281,16 @@ class CryptoRiskManager:
         return abs(var)
     
     def calculate_risk_metrics(self, returns: pd.Series, 
-                                risk_free_rate: float = 0.02) -> RiskMetrics:
+                                risk_free_rate: float = 0.02,
+                                bars_per_year: float = 252.0) -> RiskMetrics:
         """
         计算综合风险指标
+        
+        Args:
+            returns: 收益率序列
+            risk_free_rate: 年化无风险利率
+            bars_per_year: 每年 bar 数（年化口径用）。日度默认 252；
+                若传入 4h 等更高频数据应传 ~2190，避免 Sharpe/Calmar 套错频率。
         
         Returns:
             RiskMetrics对象
@@ -305,16 +312,16 @@ class CryptoRiskManager:
         max_drawdown = drawdown.min()
         
         # 夏普比率
-        excess_returns = returns - risk_free_rate / 252  # 日度
-        sharpe = np.sqrt(252) * excess_returns.mean() / excess_returns.std() if excess_returns.std() > 0 else 0
+        excess_returns = returns - risk_free_rate / bars_per_year  # 按 bar 频率年化
+        sharpe = np.sqrt(bars_per_year) * excess_returns.mean() / excess_returns.std() if excess_returns.std() > 0 else 0
         
         # Sortino比率
         downside_returns = returns[returns < 0]
         downside_std = downside_returns.std() if len(downside_returns) > 0 else 0
-        sortino = np.sqrt(252) * returns.mean() / downside_std if downside_std > 0 else 0
+        sortino = np.sqrt(bars_per_year) * returns.mean() / downside_std if downside_std > 0 else 0
         
         # Calmar比率
-        calmar = returns.mean() * 252 / abs(max_drawdown) if max_drawdown != 0 else 0
+        calmar = returns.mean() * bars_per_year / abs(max_drawdown) if max_drawdown != 0 else 0
         
         # 风险评级
         risk_score = abs(max_drawdown) * 100 + var_95 * 50 + (1 - sharpe / 2) * 20
